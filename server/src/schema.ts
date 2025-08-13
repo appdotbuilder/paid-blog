@@ -1,56 +1,102 @@
 import { z } from 'zod';
 
-// Post schema with proper numeric handling
+// User schema
+export const userSchema = z.object({
+  id: z.number(),
+  email: z.string(),
+  password_hash: z.string(),
+  phone_number: z.string(),
+  credits: z.number().int().nonnegative(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date()
+});
+
+export type User = z.infer<typeof userSchema>;
+
+// User registration input schema
+export const registerUserInputSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  phone_number: z.string()
+});
+
+export type RegisterUserInput = z.infer<typeof registerUserInputSchema>;
+
+// User login input schema
+export const loginUserInputSchema = z.object({
+  email: z.string().email(),
+  password: z.string()
+});
+
+export type LoginUserInput = z.infer<typeof loginUserInputSchema>;
+
+// Post schema
 export const postSchema = z.object({
   id: z.number(),
+  user_id: z.number(),
   title: z.string(),
-  content: z.string(),
-  price: z.number().positive(), // Stored as numeric in DB, but we use number in TS
-  posted_at: z.coerce.date(), // Automatically converts string timestamps to Date objects
-  expires_at: z.coerce.date(), // Calculated as posted_at + 24 hours
-  is_active: z.boolean(), // Computed field based on current time vs expires_at
+  description: z.string(),
+  image_path: z.string(),
+  expires_at: z.coerce.date(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date()
 });
 
 export type Post = z.infer<typeof postSchema>;
 
-// Input schema for creating posts
+// Create post input schema
 export const createPostInputSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  content: z.string().min(1, "Content is required"),
-  price: z.number().positive("Price must be positive")
+  title: z.string().min(1),
+  description: z.string().min(1),
+  image_data: z.string(), // Base64 encoded image data
+  image_filename: z.string()
 });
 
 export type CreatePostInput = z.infer<typeof createPostInputSchema>;
 
-// Input schema for updating posts
-export const updatePostInputSchema = z.object({
+// Credit purchase schema
+export const creditPurchaseSchema = z.object({
   id: z.number(),
-  title: z.string().min(1, "Title is required").optional(),
-  content: z.string().min(1, "Content is required").optional(),
-  price: z.number().positive("Price must be positive").optional()
+  user_id: z.number(),
+  credits_purchased: z.number().int().positive(),
+  amount_paid: z.number().positive(),
+  payment_method: z.enum(['credit_card', 'paypal', 'bank_transfer']),
+  transaction_id: z.string(),
+  created_at: z.coerce.date()
 });
 
-export type UpdatePostInput = z.infer<typeof updatePostInputSchema>;
+export type CreditPurchase = z.infer<typeof creditPurchaseSchema>;
 
-// Input schema for re-posting expired posts
-export const repostInputSchema = z.object({
-  id: z.number()
+// Purchase credits input schema
+export const purchaseCreditsInputSchema = z.object({
+  credits: z.number().int().positive(),
+  payment_method: z.enum(['credit_card', 'paypal', 'bank_transfer']),
+  payment_details: z.object({
+    card_number: z.string().optional(),
+    paypal_email: z.string().email().optional(),
+    bank_account: z.string().optional()
+  }).optional()
 });
 
-export type RepostInput = z.infer<typeof repostInputSchema>;
+export type PurchaseCreditsInput = z.infer<typeof purchaseCreditsInputSchema>;
 
-// Input schema for getting a single post
-export const getPostInputSchema = z.object({
-  id: z.number()
+// Auth context schema for authenticated requests
+export const authContextSchema = z.object({
+  user_id: z.number(),
+  email: z.string()
 });
 
-export type GetPostInput = z.infer<typeof getPostInputSchema>;
+export type AuthContext = z.infer<typeof authContextSchema>;
 
-// Input schema for deleting posts
-export const deletePostInputSchema = z.object({
-  id: z.number()
+// Public post schema (without sensitive user data)
+export const publicPostSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  description: z.string(),
+  image_path: z.string(),
+  phone_number: z.string(),
+  created_at: z.coerce.date(),
+  expires_at: z.coerce.date()
 });
 
-export type DeletePostInput = z.infer<typeof deletePostInputSchema>;
+export type PublicPost = z.infer<typeof publicPostSchema>;

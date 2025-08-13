@@ -1,17 +1,36 @@
+import { createHash, randomBytes } from 'crypto';
+import { db } from '../db';
+import { usersTable } from '../db/schema';
 import { type RegisterUserInput, type User } from '../schema';
 
-export async function registerUser(input: RegisterUserInput): Promise<User> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is registering a new user with email, password hash, and phone number.
-    // Users should start with 1 credit for their first free post.
-    // Password should be hashed using bcrypt or similar before storing.
-    return Promise.resolve({
-        id: 0, // Placeholder ID
+const hashPassword = (password: string, salt: string): string => {
+  return createHash('sha256').update(password + salt).digest('hex');
+};
+
+export const registerUser = async (input: RegisterUserInput): Promise<User> => {
+  try {
+    // Generate a random salt and hash the password
+    const salt = randomBytes(16).toString('hex');
+    const password_hash = salt + ':' + hashPassword(input.password, salt);
+
+    // Insert user record
+    const result = await db.insert(usersTable)
+      .values({
         email: input.email,
-        password_hash: 'hashed_password_placeholder', // Should be actual bcrypt hash
+        password_hash: password_hash,
         phone_number: input.phone_number,
-        credits: 1, // First post is free
-        created_at: new Date(),
-        updated_at: new Date()
-    } as User);
-}
+        credits: 1 // Users start with 1 credit for their first free post
+      })
+      .returning()
+      .execute();
+
+    // Return the created user
+    const user = result[0];
+    return {
+      ...user
+    };
+  } catch (error) {
+    console.error('User registration failed:', error);
+    throw error;
+  }
+};
