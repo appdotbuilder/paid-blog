@@ -1,22 +1,37 @@
+import { db } from '../db';
+import { postsTable } from '../db/schema';
 import { type RepostInput, type Post } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function repost(input: RepostInput): Promise<Post> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is re-posting an expired post by updating its
-    // posted_at to current time, expires_at to current time + 24 hours,
-    // and updated_at to current time. This incurs a new charge at the same price.
+export const repost = async (input: RepostInput): Promise<Post> => {
+  try {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
-    
-    return Promise.resolve({
-        id: input.id,
-        title: "Placeholder Title",
-        content: "Placeholder Content",
-        price: 0, // Should preserve original price
-        posted_at: now, // Updated to current time for re-post
-        expires_at: expiresAt, // New expiry time
-        is_active: true, // Re-posted posts are active
-        created_at: now, // Placeholder - should preserve original
+
+    // Update the post's posted_at, expires_at, and updated_at timestamps
+    const result = await db.update(postsTable)
+      .set({
+        posted_at: now,
+        expires_at: expiresAt,
         updated_at: now
-    } as Post);
-}
+      })
+      .where(eq(postsTable.id, input.id))
+      .returning()
+      .execute();
+
+    if (result.length === 0) {
+      throw new Error(`Post with id ${input.id} not found`);
+    }
+
+    // Convert numeric fields back to numbers before returning
+    const post = result[0];
+    return {
+      ...post,
+      price: parseFloat(post.price), // Convert string back to number
+      is_active: post.expires_at > new Date() // Compute active status based on expiry
+    };
+  } catch (error) {
+    console.error('Repost failed:', error);
+    throw error;
+  }
+};

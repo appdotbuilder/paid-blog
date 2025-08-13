@@ -1,21 +1,50 @@
+import { db } from '../db';
+import { postsTable } from '../db/schema';
 import { type UpdatePostInput, type Post } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function updatePost(input: UpdatePostInput): Promise<Post> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is updating an existing post's title, content, or price,
-    // setting updated_at to current time, and persisting changes in the database.
-    // Note: This should only update content fields, not posting/expiry timestamps.
+export const updatePost = async (input: UpdatePostInput): Promise<Post> => {
+  try {
+    // Build the update object with only provided fields
+    const updateData: any = {
+      updated_at: new Date() // Always update the updated_at timestamp
+    };
+
+    // Only include fields that were provided in the input
+    if (input.title !== undefined) {
+      updateData.title = input.title;
+    }
+    
+    if (input.content !== undefined) {
+      updateData.content = input.content;
+    }
+    
+    if (input.price !== undefined) {
+      updateData.price = input.price.toString(); // Convert number to string for numeric column
+    }
+
+    // Update the post in the database
+    const result = await db.update(postsTable)
+      .set(updateData)
+      .where(eq(postsTable.id, input.id))
+      .returning()
+      .execute();
+
+    if (result.length === 0) {
+      throw new Error(`Post with id ${input.id} not found`);
+    }
+
+    // Convert numeric fields back to numbers and calculate is_active
+    const post = result[0];
     const now = new Date();
     
-    return Promise.resolve({
-        id: input.id,
-        title: input.title || "Placeholder Title",
-        content: input.content || "Placeholder Content", 
-        price: input.price || 0,
-        posted_at: now, // Placeholder - should preserve original
-        expires_at: now, // Placeholder - should preserve original
-        is_active: true, // Placeholder - should be calculated
-        created_at: now, // Placeholder - should preserve original
-        updated_at: now
-    } as Post);
-}
+    return {
+      ...post,
+      price: parseFloat(post.price), // Convert string back to number
+      is_active: post.expires_at > now // Calculate if post is still active
+    };
+  } catch (error) {
+    console.error('Post update failed:', error);
+    throw error;
+  }
+};

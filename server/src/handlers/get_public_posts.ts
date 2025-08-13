@@ -1,31 +1,12 @@
-import { db } from '../db';
-import { postsTable, usersTable } from '../db/schema';
 import { type PublicPost } from '../schema';
-import { gt, desc, eq } from 'drizzle-orm';
 
-export const getPublicPosts = async (): Promise<PublicPost[]> => {
-  try {
-    const now = new Date();
-    
-    // Query posts that haven't expired, joining with users to get phone numbers
-    const results = await db.select({
-      id: postsTable.id,
-      title: postsTable.title,
-      description: postsTable.description,
-      image_path: postsTable.image_path,
-      phone_number: usersTable.phone_number,
-      created_at: postsTable.created_at,
-      expires_at: postsTable.expires_at
-    })
-      .from(postsTable)
-      .innerJoin(usersTable, eq(postsTable.user_id, usersTable.id))
-      .where(gt(postsTable.expires_at, now))
-      .orderBy(desc(postsTable.created_at))
-      .execute();
-
-    return results;
-  } catch (error) {
-    console.error('Failed to fetch public posts:', error);
-    throw error;
-  }
-};
+export async function getPublicPosts(): Promise<PublicPost[]> {
+    // This is a placeholder declaration! Real code should be implemented here.
+    // The goal of this handler is fetching all active (non-expired) posts for public display.
+    // Should:
+    // 1. Query posts that haven't expired (expires_at > current time)
+    // 2. Join with users table to get phone numbers
+    // 3. Order by creation date (newest first)
+    // 4. Return only public-safe data (no sensitive user info)
+    return Promise.resolve([]);
+}
